@@ -29,8 +29,8 @@ ant -v jar tests-jar
 xcopy /sfy .\java\manifest %OUT_PATH%\manifest\
 
 :: Copy resource files.
-xcopy /sfy .\java\tests\detailed\handler\*.html %OUT_PATH%\tests\detailed\handler\ || goto :end
-xcopy /sfy .\java\tests\detailed\handler\*.png %OUT_PATH%\tests\detailed\handler\ || goto :end
+REM xcopy /sfy .\java\tests\detailed\handler\*.html %OUT_PATH%\tests\detailed\handler\
+REM xcopy /sfy .\java\tests\detailed\handler\*.png %OUT_PATH%\tests\detailed\handler\
 
 :end
 endlocal & set RETURNCODE=%ERRORLEVEL%
