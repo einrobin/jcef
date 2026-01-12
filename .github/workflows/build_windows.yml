@@ -37,7 +37,7 @@ jobs:
         python-version: '3.x'
 
     - name: Setup CMake
-      uses: jwlawrence/actions-setup-cmake@v2
+      uses: jwlawson/actions-setup-cmake@v2
       with:
         cmake-version: 'latest'
 
