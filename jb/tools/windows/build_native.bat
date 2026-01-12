@@ -22,20 +22,19 @@ echo TARGET_ARCH=%TARGET_ARCH%
 
 cd "%JCEF_ROOT_DIR%\jcef_build" || goto:__exit
 
-echo *** set VS16 env...
-if "%env.VS160COMNTOOLS%" neq "" (
-    set "VS160COMNTOOLS=%env.VS160COMNTOOLS%"
+echo *** set VS17 env...
+if "%env.VS170COMNTOOLS%" neq "" (
+    set "VS170COMNTOOLS=%env.VS170COMNTOOLS%"
 )
-if "%VS160COMNTOOLS%" == "" (
-    echo error: VS160COMNTOOLS is not set
-    goto:__exit
+if "%VS170COMNTOOLS%" == "" (
+    set "VS170COMNTOOLS=C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools"
 )
-echo VS160COMNTOOLS="%VS160COMNTOOLS%"
+echo VS170COMNTOOLS="%VS170COMNTOOLS%"
 
 if "%TARGET_ARCH%" == "arm64" (
-    call "%VS160COMNTOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64 || goto:__exit
+    call "%VS170COMNTOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64 || goto:__exit
 ) else (
-    call "%VS160COMNTOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64 || goto:__exit
+    call "%VS170COMNTOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64 || goto:__exit
 )
 
 echo *** run cmake...
@@ -60,9 +59,9 @@ echo JCEF_JNI=%JCEF_JNI%
 set "PATH=%JCEF_JNI%\bin;%PATH%"
 
 if "%TARGET_ARCH%" == "arm64" (
-    cmake -G "Visual Studio 16 2019" -A ARM64 -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=arm64" .. || goto:__exit
+    cmake -G "Visual Studio 17 2022" -A ARM64 -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=arm64" .. || goto:__exit
 ) else (
-    cmake -G "Visual Studio 16 2019" -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=x86_64" .. || goto:__exit
+    cmake -G "Visual Studio 17 2022" -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=x86_64" .. || goto:__exit
 )
 
 endlocal
