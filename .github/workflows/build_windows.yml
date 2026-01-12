@@ -52,5 +52,5 @@ jobs:
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v4
       with:
-        name: windows-x64
-        path: out
+        name: jcef_win_x64.tar.gz
+        path: jcef_win_x64.tar.gz
