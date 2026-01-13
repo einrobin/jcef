@@ -3,6 +3,8 @@ name: Build Mac
 on:
   push:
     branches: [ "dev", "feature/actions" ]
+    tags:
+      - '*'
   pull_request:
     branches: [ "dev" ]
   workflow_dispatch:
