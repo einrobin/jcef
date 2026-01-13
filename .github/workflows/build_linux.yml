@@ -34,8 +34,8 @@ jobs:
     
     - name: Setup dependencies
       run: |
-        apt-get install ant git gcc cmake
-        apt-get install bison flex pkg-config
+        sudo apt-get install ant git gcc cmake
+        sudo apt-get install bison flex pkg-config
 
     - name: Build
       shell: bash
