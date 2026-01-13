@@ -39,9 +39,7 @@ jobs:
 
     - name: Build
       shell: bash
-      run: |
-        cd jb/tools/linux
-        ./build.sh all x86_64
+      run: ./jb/tools/linux/build.sh all x86_64
 
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v4
