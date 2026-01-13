@@ -34,8 +34,9 @@ jobs:
     
     - name: Setup dependencies
       run: |
+        sudo apt-get update
         sudo apt-get install ant git gcc cmake
-        sudo apt-get install bison flex pkg-config
+        sudo apt-get install bison flex pkg-config libx11-dev libxext-dev libxi-dev libxtst-dev libxrender-dev
 
     - name: Build
       shell: bash
