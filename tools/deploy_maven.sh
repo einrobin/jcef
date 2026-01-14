@@ -82,28 +82,27 @@ if [ -d "jmods" ]; then
     mv "$NATIVE_JAR_NAME" ..
     cd ..
     
-    MAIN_JAR_PATH="$EXTRACT_DIR/jmods/jcef.jar"
-    CLASSIFIER_JAR_PATH="$EXTRACT_DIR/jmods/$NATIVE_JAR_NAME"
+    OUT_JAR_DIR="$EXTRACT_DIR/jmods"
+    MAIN_JAR_NAME="jcef.jar"
+    CLASSIFIER_JAR_NAME="$NATIVE_JAR_NAME"
     
 else
     # Fallback/Standard logic if jmods directory is missing
-    echo "Warning: jmods directory not found. attempting standard jar behavior."
-    MAIN_JAR_PATH=$(find . -name "jcef.jar" | head -n 1)
-    CLASSIFIER_JAR_PATH=""
-    
-    if [ -z "$MAIN_JAR_PATH" ]; then
-        echo "Error: jcef.jar not found in extraction."
-        exit 1
-    fi
+    echo "Error: jmods directory not found."
+    exit 1
 fi
 
 popd > /dev/null
 
-echo "Main Jar: $MAIN_JAR_PATH"
-echo "Classifier Jar: $CLASSIFIER_JAR_PATH"
+echo "Main Jar: $OUT_JAR_DIR/$MAIN_JAR_NAME"
+echo "Classifier Jar: $OUT_JAR_DIR/$CLASSIFIER_JAR_NAME"
 
-if [ ! -f "$MAIN_JAR_PATH" ]; then
+if [ ! -f "$OUT_JAR_DIR/$MAIN_JAR_NAME" ]; then
     echo "Error: Main jar file does not exist at expected path."
+    exit 1
+fi
+if [ -n "$CLASSIFIER_JAR_NAME" ] && [ ! -f "$OUT_JAR_DIR/$CLASSIFIER_JAR_NAME" ]; then
+    echo "Warning: Classifier jar file does not exist at expected path."
     exit 1
 fi
 
@@ -131,36 +130,36 @@ fi
 # Deploy Logic
 
 # 1. Deploy with classifier (The platform specific jar)
-if [ -n "$CLASSIFIER_JAR_PATH" ] && [ -f "$CLASSIFIER_JAR_PATH" ]; then
-    CLASSIFIER="${OS}-${ARCH}"
-    echo "Deploying classifier artifact: $CLASSIFIER"
+CLASSIFIER="${OS}-${ARCH}"
+echo "Deploying classifier artifact: $CLASSIFIER"
 
-    mvn deploy:deploy-file $SETTINGS_ARG \
-        -Durl="$MAVEN_REPO_URL" \
-        -DrepositoryId="$REPO_ID" \
-        -Dfile="$CLASSIFIER_JAR_PATH" \
-        -DgroupId="$GROUP_ID" \
-        -DartifactId="$ARTIFACT_ID" \
-        -Dversion="$VERSION" \
-        -Dclassifier="$CLASSIFIER" \
-        -Dpackaging="jar" \
-        -DgeneratePom=false
-else
-    echo "Skipping classifier deployment (not found)."
-fi
+pushd "$OUT_JAR_DIR" > /dev/null
+mvn deploy:deploy-file $SETTINGS_ARG \
+    -Durl="$MAVEN_REPO_URL" \
+    -DrepositoryId="$REPO_ID" \
+    -Dfile="$CLASSIFIER_JAR_NAME" \
+    -DgroupId="$GROUP_ID" \
+    -DartifactId="$ARTIFACT_ID" \
+    -Dversion="$VERSION" \
+    -Dclassifier="$CLASSIFIER" \
+    -Dpackaging="jar" \
+    -DgeneratePom=false
+popd > /dev/null
 
-# 2. Special case for linux-x86_64: Deploy as the main artifact (no classifier)
+# 2. Special case for linux-x86_64: Deploy the main artifact (no classifier)
 if [ "$OS" == "linux" ] && [ "$ARCH" == "x86_64" ]; then
     echo "Deploying as main artifact (linux-x86_64)"
     
+    pushd "$OUT_JAR_DIR" > /dev/null
     mvn deploy:deploy-file $SETTINGS_ARG \
         -Durl="$MAVEN_REPO_URL" \
         -DrepositoryId="$REPO_ID" \
-        -Dfile="$MAIN_JAR_PATH" \
+        -Dfile="$MAIN_JAR_NAME" \
         -DgroupId="$GROUP_ID" \
         -DartifactId="$ARTIFACT_ID" \
         -Dversion="$VERSION" \
         -Dpackaging="jar"
+    popd > /dev/null
 fi
 
 # Cleanup
