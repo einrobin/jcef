@@ -38,11 +38,14 @@ jobs:
       shell: bash
       run: ./jb/tools/mac/build.sh all x86_64
 
+    - name: Rename Artifact
+      run: mv jcef_mac_x86_64.tar.gz jcef_mac_x64.tar.gz
+      
     - name: 'Upload Artifact'
       uses: actions/upload-artifact@v4
       with:
         name: jcef_mac_x64.tar.gz
-        path: jcef_mac_x86_64.tar.gz
+        path: jcef_mac_x64.tar.gz
 
   deploy:
     runs-on: ubuntu-latest
