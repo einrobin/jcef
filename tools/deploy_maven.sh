@@ -75,6 +75,11 @@ if [ -d "jmods" ]; then
     if [ -d "bin" ]; then mv bin "$PLATFORM_DIR/bin"; fi
     if [ -d "lib" ]; then mv lib "$PLATFORM_DIR/lib"; fi
 
+    # Move Frameworks if it exists (macOS specific)
+    if [ "$OS" == "macos" ] && [ -d "../Frameworks" ]; then
+        mv "../Frameworks" "$PLATFORM_DIR/Frameworks"
+    fi
+
     # Create platform jar
     cd "$PLATFORM_DIR"
     NATIVE_JAR_NAME="jcef-${PLATFORM_DIR}.jar"
