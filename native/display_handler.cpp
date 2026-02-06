@@ -70,8 +70,44 @@ int GetCursorId(cef_cursor_type_t type) {
       return JNI_STATIC(W_RESIZE_CURSOR);
     case CT_MOVE:
       return JNI_STATIC(MOVE_CURSOR);
-    case CT_NONE: // https://github.com/chromiumembedded/cef/blob/270b2b574532dae8e7831c049913351780017a8c/include/internal/cef_types.h#L2654-L2706
-      return -1;
+    // https://github.com/chromiumembedded/cef/blob/270b2b574532dae8e7831c049913351780017a8c/include/internal/cef_types.h#L2654-L2706
+    case CT_NONE:                         return -1;
+    case CT_POINTER:                      return -2;
+    case CT_HELP:                         return -3;
+    case CT_NORTHSOUTHRESIZE:             return -4;
+    case CT_EASTWESTRESIZE:               return -5;
+    case CT_NORTHEASTSOUTHWESTRESIZE:     return -6;
+    case CT_NORTHWESTSOUTHEASTRESIZE:     return -7;
+    case CT_COLUMNRESIZE:                 return -8;
+    case CT_ROWRESIZE:                    return -9;
+    case CT_MIDDLEPANNING:                return -10;
+    case CT_EASTPANNING:                  return -11;
+    case CT_NORTHPANNING:                 return -12;
+    case CT_NORTHEASTPANNING:             return -13;
+    case CT_NORTHWESTPANNING:             return -14;
+    case CT_SOUTHPANNING:                 return -15;
+    case CT_SOUTHEASTPANNING:             return -16;
+    case CT_SOUTHWESTPANNING:             return -17;
+    case CT_WESTPANNING:                  return -18;
+    case CT_VERTICALTEXT:                 return -19;
+    case CT_CELL:                         return -20;
+    case CT_CONTEXTMENU:                  return -21;
+    case CT_ALIAS:                        return -22;
+    case CT_PROGRESS:                     return -23;
+    case CT_NODROP:                       return -24;
+    case CT_COPY:                         return -25;
+    case CT_NOTALLOWED:                   return -26;
+    case CT_ZOOMIN:                       return -27;
+    case CT_ZOOMOUT:                      return -28;
+    case CT_GRAB:                         return -29;
+    case CT_GRABBING:                     return -30;
+    case CT_MIDDLE_PANNING_VERTICAL:      return -31;
+    case CT_MIDDLE_PANNING_HORIZONTAL:    return -32;
+    case CT_CUSTOM:                       return -33;
+    case CT_DND_NONE:                     return -34;
+    case CT_DND_MOVE:                     return -35;
+    case CT_DND_COPY:                     return -36;
+    case CT_DND_LINK:                     return -37;
     default:
       return JNI_STATIC(DEFAULT_CURSOR);
   }
