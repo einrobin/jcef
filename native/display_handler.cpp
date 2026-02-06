@@ -70,6 +70,8 @@ int GetCursorId(cef_cursor_type_t type) {
       return JNI_STATIC(W_RESIZE_CURSOR);
     case CT_MOVE:
       return JNI_STATIC(MOVE_CURSOR);
+    case CT_NONE: // https://github.com/chromiumembedded/cef/blob/270b2b574532dae8e7831c049913351780017a8c/include/internal/cef_types.h#L2654-L2706
+      return -1;
     default:
       return JNI_STATIC(DEFAULT_CURSOR);
   }
