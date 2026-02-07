@@ -7,6 +7,7 @@ import com.jetbrains.cef.remote.callback.RemoteCompletionCallback;
 import com.jetbrains.cef.remote.thrift_codegen.RObject;
 import org.cef.CefApp;
 import org.cef.browser.CefRequestContext;
+import org.cef.browser.CefColorVariant;
 import org.cef.callback.CefCompletionCallback;
 import org.cef.handler.CefRequestContextHandler;
 import org.cef.misc.CefLog;
@@ -88,6 +89,17 @@ public class RemoteRequestContext extends CefRequestContext {
         if (myRemoteWrapper == null)
             myRemoteWrapper = RemoteRequestContextHandler.create(myHandler);
         return myRemoteWrapper;
+    }
+    
+    public void SetChromeColorScheme(CefColorVariant color_variant, long user_color) {
+    }
+    
+    public CefColorVariant GetChromeColorSchemeMode() {
+        return CefColorVariant.SYSTEM;
+    }
+
+    public long GetChromeColorSchemeColor() {
+        return 0;
     }
 
     @Override

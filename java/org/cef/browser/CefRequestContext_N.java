@@ -64,6 +64,35 @@ class CefRequestContext_N extends CefRequestContext {
     }
 
     @Override
+    public void SetChromeColorScheme(CefColorVariant color_variant, long user_color) {
+        try {
+            N_SetChromeColorScheme(color_variant, user_color);
+        } catch (UnsatisfiedLinkError ule) {
+            ule.printStackTrace();
+        }
+    }
+    
+    @Override
+    public CefColorVariant GetChromeColorSchemeMode() {
+        try {
+            return N_GetChromeColorSchemeMode();
+        } catch (UnsatisfiedLinkError ule) {
+            ule.printStackTrace();
+        }
+        return CefColorVariant.SYSTEM;
+    }
+
+    @Override
+    public long GetChromeColorSchemeColor() {
+        try {
+            return N_GetChromeColorSchemeColor();
+        } catch (UnsatisfiedLinkError ule) {
+            ule.printStackTrace();
+        }
+        return 0;
+    }
+
+    @Override
     public CefRequestContextHandler getHandler() {
         return handler;
     }
@@ -82,6 +111,9 @@ class CefRequestContext_N extends CefRequestContext {
     private final static native CefRequestContext_N N_CreateContext(
             CefRequestContextHandler handler);
     private final native boolean N_IsGlobal();
+    private final native void N_SetChromeColorScheme(CefColorVariant color_variant, long user_color);
+    private final native CefColorVariant N_GetChromeColorSchemeMode();
+    private final native long N_GetChromeColorSchemeColor();
     private final native void N_CefRequestContext_DTOR();
     private final native void N_ClearCertificateExceptions(long self, CefCompletionCallback callback);
     private final native void N_CloseAllConnections(long self, CefCompletionCallback callback);

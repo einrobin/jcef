@@ -55,6 +55,30 @@ JNIEXPORT void JNICALL Java_org_cef_browser_CefRequestContext_1N_N_1ClearCertifi
 JNIEXPORT void JNICALL Java_org_cef_browser_CefRequestContext_1N_N_1CloseAllConnections
   (JNIEnv *, jobject, jlong, jobject);
 
+/*
+ * Class:     org_cef_browser_CefRequestContext_N
+ * Method:    N_SetChromeColorScheme
+ * Signature: (Lorg/cef/browser/CefColorVariant;J)V
+ */
+JNIEXPORT void JNICALL Java_org_cef_browser_CefRequestContext_1N_N_1SetChromeColorScheme
+  (JNIEnv *, jobject, jobject, jlong);
+
+/*
+ * Class:     org_cef_browser_CefRequestContext_N
+ * Method:    N_GetChromeColorSchemeMode
+ * Signature: ()Lorg/cef/browser/CefColorVariant;
+ */
+JNIEXPORT jobject JNICALL Java_org_cef_browser_CefRequestContext_1N_N_1GetChromeColorSchemeMode
+  (JNIEnv *, jobject);
+
+/*
+ * Class:     org_cef_browser_CefRequestContext_N
+ * Method:    N_GetChromeColorSchemeColor
+ * Signature: ()J
+ */
+JNIEXPORT jlong JNICALL Java_org_cef_browser_CefRequestContext_1N_N_1GetChromeColorSchemeColor
+  (JNIEnv *, jobject);
+
 #ifdef __cplusplus
 }
 #endif

@@ -63,6 +63,12 @@ public abstract class CefRequestContext extends CefNativeAdapter {
      * Returns the handler for this context if any.
      */
     public abstract CefRequestContextHandler getHandler();
+    
+    public abstract void SetChromeColorScheme(CefColorVariant color_variant, long user_color);
+    
+    public abstract CefColorVariant GetChromeColorSchemeMode();
+
+    public abstract long GetChromeColorSchemeColor();
 
     /**
      * Clears all certificate exceptions that were added as part of handling

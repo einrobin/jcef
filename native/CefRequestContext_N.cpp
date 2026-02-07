@@ -96,3 +96,97 @@ Java_org_cef_browser_CefRequestContext_1N_N_1CloseAllConnections(
       new CompletionCallback(env, jcallback);
   request_context->CloseAllConnections(callback);
 }
+
+JNIEXPORT void JNICALL
+Java_org_cef_browser_CefRequestContext_1N_N_1SetChromeColorScheme(
+    JNIEnv* env,
+    jobject obj,
+    jobject jcolor_variant,
+    jlong user_color) {
+  CefRefPtr<CefRequestContext> context =
+      GetCefFromJNIObject_sync<CefRequestContext>(env, obj, "CefRequestContext");
+  if (!context.get())
+    return;
+
+  cef_color_variant_t variant = CEF_COLOR_VARIANT_SYSTEM;
+  if (IsJNIEnumValue(env, jcolor_variant, "org/cef/browser/CefColorVariant",
+                     "SYSTEM")) {
+    variant = CEF_COLOR_VARIANT_SYSTEM;
+  } else if (IsJNIEnumValue(env, jcolor_variant,
+                            "org/cef/browser/CefColorVariant", "LIGHT")) {
+    variant = CEF_COLOR_VARIANT_LIGHT;
+  } else if (IsJNIEnumValue(env, jcolor_variant,
+                            "org/cef/browser/CefColorVariant", "DARK")) {
+    variant = CEF_COLOR_VARIANT_DARK;
+  } else if (IsJNIEnumValue(env, jcolor_variant,
+                            "org/cef/browser/CefColorVariant", "TONAL_SPOT")) {
+    variant = CEF_COLOR_VARIANT_TONAL_SPOT;
+  } else if (IsJNIEnumValue(env, jcolor_variant,
+                            "org/cef/browser/CefColorVariant", "NEUTRAL")) {
+    variant = CEF_COLOR_VARIANT_NEUTRAL;
+  } else if (IsJNIEnumValue(env, jcolor_variant,
+                            "org/cef/browser/CefColorVariant", "VIBRANT")) {
+    variant = CEF_COLOR_VARIANT_VIBRANT;
+  } else if (IsJNIEnumValue(env, jcolor_variant,
+                            "org/cef/browser/CefColorVariant", "EXPRESSIVE")) {
+    variant = CEF_COLOR_VARIANT_EXPRESSIVE;
+  }
+
+  context->SetChromeColorScheme(variant, static_cast<cef_color_t>(user_color));
+}
+
+JNIEXPORT jobject JNICALL
+Java_org_cef_browser_CefRequestContext_1N_N_1GetChromeColorSchemeMode(
+    JNIEnv* env,
+    jobject obj) {
+  CefRefPtr<CefRequestContext> context =
+      GetCefFromJNIObject_sync<CefRequestContext>(env, obj, "CefRequestContext");
+  if (!context.get())
+    return GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "SYSTEM");
+
+  jobject result = nullptr;
+  switch (context->GetChromeColorSchemeMode()) {
+    case CEF_COLOR_VARIANT_SYSTEM:
+      result = GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "SYSTEM");
+      break;
+    case CEF_COLOR_VARIANT_LIGHT:
+      result = GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "LIGHT");
+      break;
+    case CEF_COLOR_VARIANT_DARK:
+      result = GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "DARK");
+      break;
+    case CEF_COLOR_VARIANT_TONAL_SPOT:
+      result =
+          GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "TONAL_SPOT");
+      break;
+    case CEF_COLOR_VARIANT_NEUTRAL:
+      result =
+          GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "NEUTRAL");
+      break;
+    case CEF_COLOR_VARIANT_VIBRANT:
+      result =
+          GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "VIBRANT");
+      break;
+    case CEF_COLOR_VARIANT_EXPRESSIVE:
+      result =
+          GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "EXPRESSIVE");
+      break;
+    default:
+      result =
+          GetJNIEnumValue(env, "org/cef/browser/CefColorVariant", "SYSTEM");
+      break;
+  }
+  return result;
+}
+
+JNIEXPORT jlong JNICALL
+Java_org_cef_browser_CefRequestContext_1N_N_1GetChromeColorSchemeColor(
+    JNIEnv* env,
+    jobject obj) {
+  CefRefPtr<CefRequestContext> context =
+      GetCefFromJNIObject_sync<CefRequestContext>(env, obj, "CefRequestContext");
+  if (!context.get())
+    return 0;
+
+  return static_cast<jlong>(context->GetChromeColorSchemeColor());
+}
