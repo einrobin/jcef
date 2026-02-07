@@ -2,7 +2,7 @@ name: Build Windows
 
 on:
   push:
-    branches: [ "dev", "feature/actions" ]
+    branches: [ "dev", "feature/actions", "feature/themes" ]
     tags:
       - '*'
   pull_request:
