@@ -226,7 +226,7 @@ void create(std::shared_ptr<JNIObjectsForCreate> objs,
 
   // JCEF requires Alloy runtime style for "normal" browsers in order for them
   // to be integratable into Java UI.
-  windowInfo.runtime_style = CEF_RUNTIME_STYLE_ALLOY;
+  windowInfo.runtime_style = CEF_RUNTIME_STYLE_CHROME;
 
   bool result = CefBrowserHost::CreateBrowser(
       windowInfo, clientHandler.get(), strUrl, settings, extra_info, context);
