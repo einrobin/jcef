@@ -10,7 +10,10 @@
 
 function(DownloadCEF platform version download_dir)
   # Specify the binary distribution type and download directory.
-  if (CMAKE_BUILD_TYPE STREQUAL "Debug")
+  # Use the full (non-minimal) distribution when DRM/Widevine support is needed,
+  # as the minimal build lacks proprietary codecs (H.264/AAC) required for most
+  # DRM-protected content. Set JCEF_CEF_FULL_DISTRIBUTION=ON to enable.
+  if (CMAKE_BUILD_TYPE STREQUAL "Debug" OR JCEF_CEF_FULL_DISTRIBUTION)
     set(CEF_DISTRIBUTION "cef_binary_${version}_${platform}")
   else ()
     set(CEF_DISTRIBUTION "cef_binary_${version}_${platform}_minimal")

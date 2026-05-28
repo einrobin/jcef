@@ -161,7 +161,6 @@ bool CommandLineArgs::init(int argc, char* argv[]) {
      myChromiumSwitches.push_back("--disable-features=SpareRendererForSitePerProcess");
      myChromiumSwitches.push_back("--disable-gpu-process-crash-limit");
      myChromiumSwitches.push_back("--autoplay-policy=no-user-gesture-required");
-     myChromiumSwitches.push_back("--disable-component-update");
 #elif defined(OS_MAC)
     myChromiumSwitches.push_back("--disable-in-process-stack-traces");
     myChromiumSwitches.push_back("--use-mock-keychain");
@@ -169,12 +168,10 @@ bool CommandLineArgs::init(int argc, char* argv[]) {
     myChromiumSwitches.push_back("--disable-notifications");
     myChromiumSwitches.push_back("--disable-gpu-process-crash-limit");
     myChromiumSwitches.push_back("--autoplay-policy=no-user-gesture-required");
-    myChromiumSwitches.push_back("--disable-component-update");
   #else
     myChromiumSwitches.push_back("--disable-features=SpareRendererForSitePerProcess");
     myChromiumSwitches.push_back("--disable-gpu-process-crash-limit");
     myChromiumSwitches.push_back("--autoplay-policy=no-user-gesture-required");
-    myChromiumSwitches.push_back("--disable-component-update");
     myChromiumSwitches.push_back("--no-proxy-server");
   #endif
   } // myChromiumSwitches.empty()
