@@ -11,6 +11,8 @@ import org.cef.misc.Utils;
 
 import java.awt.*;
 import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
@@ -60,7 +62,7 @@ public abstract class JCefAppConfig {
         };
         appConfig.nativeBundlePath = nativeBundlePath;
         if (OS.isMacintosh()) {
-            appConfig.cefFrameworkPathOSX = Utils.pathOf(nativeBundlePath, "Frameworks/Chromium Embedded Framework.framework");
+            appConfig.cefFrameworkPathOSX = Utils.pathOf(nativeBundlePath, "Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework");
             if (!outOfProcess) {
                 appConfig.appArgs.add("--framework-dir-path=" + appConfig.cefFrameworkPathOSX);
                 appConfig.appArgs.add("--main-bundle-path=" + Utils.pathOf(nativeBundlePath, "Frameworks/jcef Helper.app"));
@@ -131,8 +133,8 @@ public abstract class JCefAppConfig {
         };
         if (OS.isMacintosh()) {
             String javaRoot = Utils.pathOf(System.getProperty("java.home"), "/..");
-            String frameworkPath = Utils.pathOf(javaRoot, "/Frameworks/Chromium Embedded Framework.framework");
-            String cefHelperPath = Utils.pathOf(javaRoot, "/Frameworks/jcef Helper.app");
+            String frameworkPath = Utils.pathOf(javaRoot, "/Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework");
+            String cefHelperPath = Utils.pathOf(javaRoot, "/Frameworks/cef_server.app/Contents/Frameworks/jcef Helper.app");
             String subprocessPath = Utils.pathOf(cefHelperPath, "/Contents/MacOS/jcef Helper");
 
             appConfig.appArgs.add("--framework-dir-path=" + frameworkPath);
@@ -155,7 +157,6 @@ public abstract class JCefAppConfig {
             appConfig.appArgs.add("--disable-features=SpareRendererForSitePerProcess");
         } else if (OS.isWindows()) {
             String binPath = System.getProperty("java.home") + "/bin";
-            String libPath = System.getProperty("java.home") + "/lib";
             appConfig.cefSettings.browser_subprocess_path = binPath + "/jcef_helper.exe";
 
             appConfig.appArgs.add("--disable-features=SpareRendererForSitePerProcess");
@@ -179,7 +180,7 @@ public abstract class JCefAppConfig {
     @Deprecated
     public static String getJbrFrameworkPathOSX() {
         if (OS.isMacintosh()) {
-            return Utils.pathOf(System.getProperty("java.home"), "../Frameworks/Chromium Embedded Framework.framework");
+            return Utils.pathOf(System.getProperty("java.home"), "../Frameworks/cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework");
         }
         return null;
     }
@@ -217,6 +218,26 @@ public abstract class JCefAppConfig {
         }
     }
 
+    public JCefVersionDetails getNativeBundleVersionDetails() {
+        final Path versionFile = Path.of(nativeBundlePath, "version.info");
+        if (Files.exists(versionFile)) {
+            try {
+                for (String line : Files.readAllLines(versionFile)) {
+                    if (line.contains("JCEF_VERSION_DETAILED")) {
+                        String[] split = line.split("=");
+                        if (split.length == 2) {
+                            return new JCefVersionDetails(split[1].trim());
+                        }
+                    }
+                }
+                return null;
+            }
+            catch (JCefVersionDetails.VersionUnavailableException | IOException e) {
+                return null;
+            }
+        }
+        return null;
+    }
 
     public static double getDeviceScaleFactor(/*@Nullable*/Component component) {
         if (GraphicsEnvironment.isHeadless()) {

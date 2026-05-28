@@ -24,17 +24,32 @@ cd "%JCEF_ROOT_DIR%\jcef_build" || goto:__exit
 
 echo *** set VS17 env...
 if "%env.VS170COMNTOOLS%" neq "" (
-    set "VS170COMNTOOLS=%env.VS170COMNTOOLS%"
+    set "VS_TOOLS=%env.VS170COMNTOOLS%"
 )
-if "%VS170COMNTOOLS%" == "" (
-    set "VS170COMNTOOLS=C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools"
+if "%VS170COMNTOOLS%" neq "" (
+    set "VS_TOOLS=%VS170COMNTOOLS%"
 )
-echo VS170COMNTOOLS="%VS170COMNTOOLS%"
+if "%VS_TOOLS%" == "" (
+    echo *** VS170COMNTOOLS is not set, will be used VS16
+    if "%env.VS160COMNTOOLS%" neq "" (
+        set "VS_TOOLS=%env.VS160COMNTOOLS%"
+    )
+    if "%VS160COMNTOOLS%" neq "" (
+        set "VS_TOOLS=%VS160COMNTOOLS%"
+    )
+)
+
+if "%VS_TOOLS%" == "" (
+    echo error: neither VS160COMNTOOLS or VS170COMNTOOLS is not set
+    goto:__exit
+)
+
+echo VS_TOOLS="%VS_TOOLS%"
 
 if "%TARGET_ARCH%" == "arm64" (
-    call "%VS170COMNTOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64 || goto:__exit
+    call "%VS_TOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64_arm64 || goto:__exit
 ) else (
-    call "%VS170COMNTOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64 || goto:__exit
+    call "%VS_TOOLS%\..\..\VC\Auxiliary\Build\vcvarsall.bat" amd64 || goto:__exit
 )
 
 echo *** run cmake...
@@ -59,9 +74,9 @@ echo JCEF_JNI=%JCEF_JNI%
 set "PATH=%JCEF_JNI%\bin;%PATH%"
 
 if "%TARGET_ARCH%" == "arm64" (
-    cmake -G "Visual Studio 17 2022" -A ARM64 -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=arm64" .. || goto:__exit
+    cmake -G "Visual Studio 17 2022" -A ARM64 -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=arm64" -D "CMAKE_SYSTEM_VERSION=10.0.22621.0" .. || goto:__exit
 ) else (
-    cmake -G "Visual Studio 17 2022" -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=x86_64" .. || goto:__exit
+    cmake -G "Visual Studio 17 2022" -D "JAVA_HOME=%JCEF_JNI:\=/%" -D "PROJECT_ARCH=x86_64" -D "CMAKE_SYSTEM_VERSION=10.0.22621.0" .. || goto:__exit
 )
 
 endlocal

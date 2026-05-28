@@ -81,11 +81,10 @@ public class BasicJcefTest {
         }
 
         CefLog.Info("Start new instance of cef_server");
-        JCefAppConfig config = JCefAppConfig.getInstance();
+        JCefAppConfig config = CefInitHelper.getConfig();
+        CefApp.setIsRemoteEnabled(config.isRemoteEnabled());
         List<String> appArgs = config.getAppArgsAsList();
-        if (OS.isLinux())
-            appArgs.add("--password-store=basic");
-        CefInitHelper.addArgsToDisableStatisticLogging(appArgs);
+        CefInitHelper.addTestArgs(appArgs);
         CefSettings settings = config.getCefSettings();
         settings.windowless_rendering_enabled = true;
         settings.log_severity = CefSettings.LogSeverity.LOGSEVERITY_VERBOSE;
@@ -203,11 +202,10 @@ public class BasicJcefTest {
             return;
         }
 
-        JCefAppConfig config = JCefAppConfig.getInstance();
+        JCefAppConfig config = CefInitHelper.getConfig();
+        CefApp.setIsRemoteEnabled(config.isRemoteEnabled());
         List<String> appArgs = config.getAppArgsAsList();
-        if (OS.isLinux())
-            appArgs.add("--password-store=basic");
-        CefInitHelper.addArgsToDisableStatisticLogging(appArgs);
+        CefInitHelper.addTestArgs(appArgs);
         final String[] argsArr = appArgs.toArray(new String[0]);
         CefSettings basicSettings = config.getCefSettings();
         basicSettings.windowless_rendering_enabled = true;

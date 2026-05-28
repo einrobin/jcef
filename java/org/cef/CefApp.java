@@ -164,7 +164,7 @@ public class CefApp extends CefAppHandlerAdapter {
             if (isRemoteEnabled_)
                 System.out.println("JCEF is forced to be enabled.");
         } else
-            isRemoteEnabled_ = !Boolean.getBoolean("jcef.remote.disabled");
+            isRemoteEnabled_ = Boolean.getBoolean("jcef.remote.enabled");
     }
 
     /**
@@ -432,6 +432,8 @@ public class CefApp extends CefAppHandlerAdapter {
 
     public final CefServer getServer() { return server_; }
 
+    public final String getServerExePath() { return server_ == null ? null : server_.getExePath(); }
+
     @Override
     public String toString() {
         if (server_ == null)
@@ -549,7 +551,7 @@ public class CefApp extends CefAppHandlerAdapter {
         if (server_ != null) {
             server_.onConnected(()->{
                 RemoteSchemeHandlerFactory rf = RemoteSchemeHandlerFactory.create(factory);
-                server_.exec(s -> s.SchemeHandlerFactory_Register(schemeName, domainName, rf.thriftId()));
+                server_.exec(s -> s.SchemeHandlerFactory_Register(schemeName, domainName, rf.toRObject()));
             }, "registerSchemeHandlerFactory", true);
             return true;
         }

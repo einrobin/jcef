@@ -23,7 +23,11 @@ export -f clean
 RELEASE_PATH="$JCEF_ROOT_DIR"/jcef_build/native/${CEF_BUILD_TYPE}
 ARTIFACT=jcef_mac_${TARGET_ARCH}
 ARTIFACT_SERVER=cef_server_mac_${TARGET_ARCH}
-ARTIFACT_NATIVE_BUNDLE=jcef_native_bundle_mac_${TARGET_ARCH}
+if [ "$TARGET_ARCH" == "arm64" ]; then
+  ARTIFACT_NATIVE_BUNDLE=jcef_native_bundle_mac_aarch64
+else
+  ARTIFACT_NATIVE_BUNDLE=jcef_native_bundle_mac_${TARGET_ARCH}
+fi
 
 clean arm64
 clean x86_64
@@ -55,9 +59,11 @@ echo "*** create jcef.version file..."
 bash "$JB_TOOLS_DIR"/common/create_version_file.sh $ARTIFACT
 
 echo "*** create standalone native bundle..."
-rm -rf "$ARTIFACT_NATIVE_BUNDLE" && mkdir -p "$ARTIFACT_NATIVE_BUNDLE"/jcef
-cp -R "$RELEASE_PATH"/jcef_app.app/Contents/Frameworks "$ARTIFACT_NATIVE_BUNDLE"/jcef/
+rm -rf "$ARTIFACT_NATIVE_BUNDLE" && mkdir -p "$ARTIFACT_NATIVE_BUNDLE"/jcef/Frameworks
+cp -R "$RELEASE_PATH"/jcef_app.app/Contents/Frameworks/jcef* "$ARTIFACT_NATIVE_BUNDLE"/jcef/Frameworks
 cp -R "$RELEASE_PATH"/../../remote/"$CEF_BUILD_TYPE"/cef_server.app "$ARTIFACT_NATIVE_BUNDLE"/jcef/Frameworks/
+cp -R "$RELEASE_PATH/jcef_app.app/Contents/Frameworks/Chromium Embedded Framework.framework" "$ARTIFACT_NATIVE_BUNDLE/jcef/Frameworks/cef_server.app/Contents/Frameworks/"
+ln -s "./cef_server.app/Contents/Frameworks/Chromium Embedded Framework.framework" "$ARTIFACT_NATIVE_BUNDLE/jcef/Frameworks/"
 cp "$RELEASE_PATH"/../../remote/"$CEF_BUILD_TYPE"/libshared_mem_helper.dylib "$ARTIFACT_NATIVE_BUNDLE"/jcef/
 cp "$RELEASE_PATH"/../../native/"$CEF_BUILD_TYPE"/libjcef.dylib "$ARTIFACT_NATIVE_BUNDLE"/jcef/
 cp "$ARTIFACT/jcef.version" "$ARTIFACT_NATIVE_BUNDLE"/jcef

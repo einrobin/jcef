@@ -28,6 +28,7 @@ import org.cef.input.CefTouchEvent;
 import org.cef.misc.CefLog;
 import org.cef.misc.CefPdfPrintSettings;
 import org.cef.misc.CefRange;
+import org.cef.misc.Delayed;
 import org.cef.network.CefRequest;
 
 import java.awt.*;
@@ -35,11 +36,11 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseWheelEvent;
 import java.awt.image.BufferedImage;
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.Supplier;
 
 public class RemoteBrowser implements CefBrowser {
     private final RpcContext myRpc;
@@ -47,6 +48,7 @@ public class RemoteBrowser implements CefBrowser {
     private final CefClient myCefClient; // will be the "owner" of RemoteClient, needed to override getClient()
     private final RemoteRequestContext myRequestContext;
     private final CefBrowserSettings mySettings; // TODO: use settings in startNativeCreation
+    private final Delayed myDelayed;
 
     private volatile int myBid = -1;
     private String myUrl = null;
@@ -55,12 +57,10 @@ public class RemoteBrowser implements CefBrowser {
 
     private final AtomicBoolean myIsNativeBrowserCreationRequested = new AtomicBoolean(false);
     private final AtomicBoolean myIsNativeBrowserCreationStarted = new AtomicBoolean(false);
-    private volatile boolean myIsNativeBrowserCreated = false;
     private volatile boolean myIsClosing = false;
     private volatile boolean myIsClosed = false;
     private volatile int myNativeBrowserIdentifier = Integer.MIN_VALUE;
 
-    private final List<Runnable> myDelayedActions = new ArrayList<>();
     private int myFrameRate = 30; // just for cache
 
     private volatile boolean myIsDevToolsOpened = false;
@@ -74,6 +74,7 @@ public class RemoteBrowser implements CefBrowser {
         myUrl = url;
         myRequestContext = requestContext != null ? requestContext : new RemoteRequestContext(myRpc.server);
         mySettings = settings;
+        myDelayed = new Delayed("RemoteBrowser_" + Integer.toHexString(hashCode()));
     }
 
     public int getBid() { return myBid; }
@@ -81,33 +82,18 @@ public class RemoteBrowser implements CefBrowser {
     public RemoteClient getOwner() { return myOwner; }
 
     public boolean isNativeBrowserCreationStarted() { return myIsNativeBrowserCreationStarted.get(); }
-    public boolean isNativeBrowserCreated() { return myIsNativeBrowserCreated; }
+    public boolean isNativeBrowserCreated() { return myDelayed.isFinished(); }
     public int getNativeBrowserIdentifier() { return myNativeBrowserIdentifier; }
 
     protected void setNativeBrowserCreated(int nativeBrowserIdentifier) {
         // Called from lifespan-handler::onAfterCreated (of owner)
-        synchronized (myDelayedActions) {
-            myIsNativeBrowserCreated = true;
-            myNativeBrowserIdentifier = nativeBrowserIdentifier;
-            myDelayedActions.forEach(r -> r.run());
-            myDelayedActions.clear();
-        }
+        myNativeBrowserIdentifier = nativeBrowserIdentifier;
+        myDelayed.finishNow();
     }
 
     public void setComponent(Component component, CefNativeRenderHandler renderHandler) {
         myComponent = component;
         myRender = renderHandler;
-    }
-
-    private void execWhenCreated(Runnable runnable, String name) {
-        synchronized (myDelayedActions) {
-            if (myIsNativeBrowserCreated) {
-                runnable.run();
-            } else {
-                CefLog.Debug("%s: add delayed action %s", this, name);
-                myDelayedActions.add(runnable);
-            }
-        }
     }
 
     @Override
@@ -124,14 +110,12 @@ public class RemoteBrowser implements CefBrowser {
             myIsNativeBrowserCreationStarted.set(true);
             myOwner.requestCid();
 
+            final RObject reqCtx = myRequestContext == null ? new RObject() : myRequestContext.getPeer();
             myRpc.exec((s) -> {
-                RObject contextHandler = new RObject();
-                if (myRequestContext.getRemoteHandler() != null)
-                    contextHandler = myRequestContext.getRemoteHandler().thriftId();
-                myBid = s.Browser_Create(myOwner.getCid(), contextHandler);
+                myBid = s.Browser_Create(myOwner.getCid(), reqCtx);
             });
             if (myBid >= 0) {
-                myRpc.server.bid2Browser.put(myBid, this);
+                myRpc.server.bid2Browser.put(myBid, new WeakReference<>(this));
                 CefLog.Debug("Registered bid %d", myBid);
                 // At current point new bid is registered so java-handlers calls will be dispatched correctly.
                 // We can't start creation earlier because for example onAfterCreated can be called before new bid is registered.
@@ -139,9 +123,6 @@ public class RemoteBrowser implements CefBrowser {
             } else
                 CefLog.Error("Can't obtain bid, createBrowser returns %d", myBid);
         }
-
-        if (myBid >= 0)
-            myRequestContext.setBid(myBid, myRpc);
     }
 
     @Override
@@ -211,7 +192,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_Reload(myBid);
             });
@@ -223,7 +204,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_ReloadIgnoreCache(myBid);
             });
@@ -355,7 +336,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_ViewSource(myBid);
             });
@@ -367,10 +348,10 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing || visitor == null)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 RemoteStringVisitor rvisitor = RemoteStringVisitor.create(visitor);
-                s.Browser_GetSource(myBid, rvisitor.thriftId());
+                s.Browser_GetSource(myBid, rvisitor.toRObject());
             });
         }, "getSource");
     }
@@ -380,10 +361,10 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing || visitor == null)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 RemoteStringVisitor rvisitor = RemoteStringVisitor.create(visitor);
-                s.Browser_GetText(myBid, rvisitor.thriftId());
+                s.Browser_GetText(myBid, rvisitor.toRObject());
             });
         }, "getText");
     }
@@ -398,11 +379,11 @@ public class RemoteBrowser implements CefBrowser {
             return;
         }
 
-        execWhenCreated(() -> {
+        myDelayed.runOrDelay(() -> {
             RemoteRequestImpl rr = ((RemoteRequest)request).getImpl();
             if (rr != null) {
                 rr.flush(); // just for insurance
-                myRpc.exec((s) -> s.Browser_LoadRequest(myBid, rr.thriftIdWithCache()));
+                myRpc.exec((s) -> s.Browser_LoadRequest(myBid, rr.toRObjectWithCache()));
             } else
                 CefLog.Error("RemoteRequestImpl is null [bid=%d]", myBid);
         }, "loadRequest");
@@ -414,7 +395,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.exec((s)->{
                 s.Browser_LoadURL(myBid, url);
             });
@@ -426,7 +407,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.exec((s)->{
                 s.Browser_ExecuteJavaScript(myBid, code, url, line);
             });
@@ -458,9 +439,7 @@ public class RemoteBrowser implements CefBrowser {
             if (myBid >= 0)
                 myRpc.invokeLater(s -> s.Browser_Close(myBid));
         }
-        synchronized (myDelayedActions) {
-            myDelayedActions.clear();
-        }
+        myDelayed.dispose();
     }
 
     @Override
@@ -480,7 +459,7 @@ public class RemoteBrowser implements CefBrowser {
             myDevToolsClient.close();
 
         if (myBid >= 0) {
-            RemoteBrowser removed = myRpc.server.bid2Browser.remove(myBid);
+            Object removed = myRpc.server.bid2Browser.remove(myBid);
             if (removed == null)
                 CefLog.Error("Unregister bid: bid=%d was already removed.", myBid);
         } else
@@ -498,7 +477,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_SetFocus(myBid, enable);
             });
@@ -527,7 +506,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->myRpc.invokeLater((s)-> s.Browser_SetZoomLevel(myBid, zoomLevel)), "setZoomLevel");
+        myDelayed.runOrDelay(()->myRpc.invokeLater((s)-> s.Browser_SetZoomLevel(myBid, zoomLevel)), "setZoomLevel");
     }
 
     @Override
@@ -540,9 +519,9 @@ public class RemoteBrowser implements CefBrowser {
         }
         RemoteRunFileDialogCallback rcallback = RemoteRunFileDialogCallback.create(callback);
         final Vector<String> filters = acceptFilters == null ? new Vector<>() : acceptFilters;
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
-                s.Browser_RunFileDialog(myBid, mode.name(), title, defaultFilePath, filters, rcallback.thriftId());
+                s.Browser_RunFileDialog(myBid, mode.name(), title, defaultFilePath, filters, rcallback.toRObject());
             });
         }, "runFileDialog");
     }
@@ -552,7 +531,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_StartDownload(myBid, url);
             });
@@ -563,7 +542,7 @@ public class RemoteBrowser implements CefBrowser {
     public void print() {
         if (myIsClosing)
             return;
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_Print(myBid);
             });
@@ -603,9 +582,9 @@ public class RemoteBrowser implements CefBrowser {
             printSettings.put("generate_document_outline", String.valueOf(settings.generate_document_outline));
             printSettings.put("generate_tagged_pdf", String.valueOf(settings.generate_tagged_pdf));
         }
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
-                s.Browser_PrintToPDF(myBid, path, printSettings, rcallback.thriftId());
+                s.Browser_PrintToPDF(myBid, path, printSettings, rcallback.toRObject());
             });
         }, "printToPDF");
     }
@@ -615,7 +594,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_Find(myBid, searchText, forward, matchCase, findNext);
             });
@@ -627,7 +606,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_StopFinding(myBid, clearSelection);
             });
@@ -651,7 +630,7 @@ public class RemoteBrowser implements CefBrowser {
 
     @Override
     public void closeDevTools() {
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_CloseDevTools(myBid);
             });
@@ -673,7 +652,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_ReplaceMisspelling(myBid, word);
             });
@@ -687,7 +666,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater(s -> s.Browser_WasResized(myBid));
         }, "wasResized");
     }
@@ -697,7 +676,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater(s -> s.Browser_Invalidate(myBid));
         }, "invalidate");
     }
@@ -707,7 +686,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater(s -> s.Browser_NotifyScreenInfoChanged(myBid));
         }, "notifyScreenInfoChanged");
     }
@@ -823,7 +802,7 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing)
             return;
 
-        execWhenCreated(()->{
+        myDelayed.runOrDelay(()->{
             myRpc.invokeLater((s)->{
                 s.Browser_SetFrameRate(myBid, frameRate);
             });
@@ -847,13 +826,13 @@ public class RemoteBrowser implements CefBrowser {
         if (myIsClosing || observer == null)
             return null;
 
-        if (!myIsNativeBrowserCreated) {
+        if (!isNativeBrowserCreated()) {
             CefLog.Error("Can't add DevToolsMessageObserver because native browser wasn't created");
             return null;
         }
 
         RemoteDevToolsMessageObserver robserver = RemoteDevToolsMessageObserver.create(observer);
-        RObject registration = myRpc.execObj(s -> s.Browser_AddDevToolsMessageObserver(myBid, robserver.thriftId()));
+        RObject registration = myRpc.execObj(s -> s.Browser_AddDevToolsMessageObserver(myBid, robserver.toRObject()));
         RemoteRegistrationImpl impl = new RemoteRegistrationImpl(myRpc, registration);
         return new RemoteRegistration(impl);
     }
@@ -862,7 +841,7 @@ public class RemoteBrowser implements CefBrowser {
         CompletableFuture<Integer> future = new CompletableFuture<>();
         if (myIsClosing || method == null) {
             future.completeExceptionally(new CefDevToolsClient.DevToolsException(myIsClosing ? "Client is closing." : "Method is null."));
-        } else if (!myIsNativeBrowserCreated) {
+        } else if (!isNativeBrowserCreated()) {
             CefLog.Error("Can't execute DevToolsMethod because native browser wasn't created");
             future.completeExceptionally(new CefDevToolsClient.DevToolsException("Native browser wasn't created"));
         } else {
@@ -874,8 +853,8 @@ public class RemoteBrowser implements CefBrowser {
                     future.complete(generatedMessageId);
                 }
             });
-            execWhenCreated(() -> {
-                myRpc.invokeLater(s -> s.Browser_ExecuteDevToolsMethod(myBid, method, parametersAsJson, ricb.thriftId()));
+            myDelayed.runOrDelay(() -> {
+                myRpc.invokeLater(s -> s.Browser_ExecuteDevToolsMethod(myBid, method, parametersAsJson, ricb.toRObject()));
             }, String.format("executeDevToolsMethod: %s(%s)", method, parametersAsJson));
         }
 

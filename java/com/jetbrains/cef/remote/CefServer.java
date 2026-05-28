@@ -11,9 +11,11 @@ import org.cef.CefApp;
 import org.cef.CefSettings;
 import org.cef.handler.CefAppHandler;
 import org.cef.misc.CefLog;
+import org.cef.misc.Delayed;
 import org.cef.misc.Utils;
 
 import java.io.File;
+import java.lang.ref.WeakReference;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -31,6 +33,7 @@ public class CefServer {
     private final boolean myConnectAsMaster;
     private ThriftTransport myThriftBackward;
     private final CefParams myParams;
+    private final Delayed myDelayed;
 
     private CefApp myCefApp = null;
 
@@ -46,12 +49,9 @@ public class CefServer {
     private volatile boolean myIsDisconnected = false;
     private volatile boolean myIsCrashed = false;
 
-    private final LinkedList<Runnable> myDelayedActions = new LinkedList<>();
-
     private Runnable myDisconnectionCallback = null;
 
-    public final Map<Integer, RemoteClient> cid2Client = new ConcurrentHashMap<>();
-    public final Map<Integer, RemoteBrowser> bid2Browser = new ConcurrentHashMap<>();
+    public final Map<Integer, WeakReference<RemoteBrowser>> bid2Browser = new ConcurrentHashMap<>();
 
     public CefServer(ThriftTransport transport, String[] args, CefSettings settings) {
         this(NativeServerManager.getServerExe(), transport, args, settings);
@@ -64,6 +64,7 @@ public class CefServer {
         myServerExe = serverExe;
         myConnectAsMaster = connectAsMaster;
         myParams = new CefParams(settings, args);
+        myDelayed = new Delayed("CefServer_" + toStringShort());
 
         myRpc = new RpcContext(this);
         myClientHandlersImpl = new ClientHandlersImpl(myRpc);
@@ -157,29 +158,14 @@ public class CefServer {
             CefLog.Error("RuntimeException in CefServer.start: %s", e.getMessage());
             return false;
         } finally {
-            synchronized (myDelayedActions) {
-                myDelayedActions.clear();
-            }
+            if (!myDelayed.isFinished() && !myDelayed.isDisposed())
+                myDelayed.dispose();
         }
     }
 
     // returns true when server is connected and action was executed immediately
     public boolean onConnected(Runnable r, String name, boolean first) {
-        synchronized (myDelayedActions) {
-            if (myIsConnected) {
-                if (r != null)
-                    r.run();
-                return true;
-            }
-            if (r != null) {
-                if (first)
-                    myDelayedActions.addFirst(r);
-                else
-                    myDelayedActions.addLast(r);
-                CefLog.Debug("Delay action '%s' until server connected (first=%s).", name, String.valueOf(first));
-            }
-            return false;
-        }
+        return myDelayed.runOrDelay(r, name, first);
     }
 
     public RpcContext getRpcContext() { return myRpc; }
@@ -192,6 +178,13 @@ public class CefServer {
         if (myIsConnected)
             return myRpc.execObj(r->r.getServerInfo("version"));
         return "unknown(not connected)";
+    }
+
+    public String getExePath() {
+        if (myServerExe != null)
+            return myServerExe.getAbsolutePath();
+        final File f = NativeServerManager.getServerExe();
+        return f != null ? f.getAbsolutePath() : null;
     }
 
     private boolean connect(Runnable onContextInitialized) {
@@ -256,18 +249,16 @@ public class CefServer {
                 return false;
             }
 
-            CefLog.Debug("Connected to '%s', cid=%d", this.toStringDetailed(), cid);
+            CefLog.Debug("Connected to '%s', cid=%d, transport(backward)=%s, asMaster=%s", this.toStringDetailed(), cid, myThriftBackward.toStringShort(), myConnectAsMaster);
         } catch (Throwable e) {
             CefLog.Error("RuntimeException in CefServer.connect: %s", e.getMessage());
             return false;
         } finally {
-            synchronized (myDelayedActions) {
-                if (cid != -1) {
-                    myIsConnected = true;
-                    myDelayedActions.forEach(r -> r.run());
-                }
-                myDelayedActions.clear();
-            }
+            if (cid != -1) {
+                myIsConnected = true;
+                myDelayed.finishNow();
+            } else
+                myDelayed.dispose();
         }
         return true;
     }

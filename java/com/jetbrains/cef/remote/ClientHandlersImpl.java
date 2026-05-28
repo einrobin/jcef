@@ -24,6 +24,7 @@ import org.cef.network.CefURLRequest;
 import org.cef.security.CefSSLInfo;
 
 import java.awt.*;
+import java.lang.ref.WeakReference;
 import java.nio.ByteBuffer;
 import java.util.*;
 import java.util.List;
@@ -45,9 +46,15 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
     }
 
     private RemoteBrowser getRemoteBrowser(int bid) {
-        RemoteBrowser browser = myRpc.server.bid2Browser.get(bid);
-        if (browser == null) {
+        WeakReference<RemoteBrowser> browserRef = myRpc.server.bid2Browser.get(bid);
+        if (browserRef == null) {
             if (TRACE_REMOTE_FIND_BID) CefLog.Debug("Can't find remote browser with bid=%d.", bid);
+            return null;
+        }
+        RemoteBrowser browser = browserRef.get();
+        if (browser == null) {
+            if (TRACE_REMOTE_FIND_BID) CefLog.Warn("Remote browser with bid=%d was disposed by GC.", bid);
+            myRpc.server.bid2Browser.remove(bid);
             return null;
         }
         return browser;
@@ -500,7 +507,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         if (handler == null) return NULL_ROBJECT;
 
         RemoteResourceRequestHandler resultHandler = RemoteResourceRequestHandler.create(handler);
-        return resultHandler.thriftId(disableDefaultHandling.get() ? 1 : 0);
+        return resultHandler.toRObject(disableDefaultHandling.get() ? 1 : 0);
     }
 
     ///
@@ -522,11 +529,11 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rrrh.getDelegate().getCookieAccessFilter(getRemoteBrowser(bid), rframe, new RemoteRequest(rr));
         } catch (Throwable e) {
-            CefLog.Error("getCookieAccessFilter: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.GetCookieAccessFilter: msg=%s (%s)", e.getMessage(), e);
         }
         if (filter == null) return NULL_ROBJECT;
         RemoteCookieAccessFilter resultHandler = RemoteCookieAccessFilter.create(filter);
-        return resultHandler.thriftId();
+        return resultHandler.toRObject();
     }
 
     @Override
@@ -578,7 +585,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             result = f.getDelegate().canSendCookie(getRemoteBrowser(bid), rframe, new RemoteRequest(rr), cookieFromList(cookie));
         } catch (Throwable e) {
-            CefLog.Error("canSendCookie: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefCookieAccessFilter.CanSendCookie: msg=%s (%s)", e.getMessage(), e);
         }
         return result;
     }
@@ -603,7 +610,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             result = f.getDelegate().canSaveCookie(getRemoteBrowser(bid), rframe, new RemoteRequest(rreq), new RemoteResponse(rresp), cookieFromList(cookie));
         } catch (Throwable e) {
-            CefLog.Error("canSaveCookie: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefCookieAccessFilter.CanSaveCookie: msg=%s (%s)", e.getMessage(), e);
         }
         // NOTE: doc doesn't say that response can't be modifed, but call rresp.flush() triggers cooresponding
         // error on server (i.e. resp is immutable) so don't do that.
@@ -694,7 +701,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
             result = rrrh.getDelegate().onBeforeResourceLoad(getRemoteBrowser(bid), rframe, new RemoteRequest(rr));
             rr.flush();
         } catch (Throwable e) {
-            CefLog.Error("onBeforeResourceLoad: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.OnBeforeResourceLoad: msg=%s (%s)", e.getMessage(), e);
         }
         return result;
     }
@@ -719,13 +726,13 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             handler = rrrh.getDelegate().getResourceHandler(getRemoteBrowser(bid), rframe, new RemoteRequest(rr));
         } catch (Throwable e) {
-            CefLog.Error("getResourceHandler: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.GetResourceHandler: msg=%s (%s)", e.getMessage(), e);
         }
 
         if (handler == null) return NULL_ROBJECT;
 
         RemoteResourceHandler result = RemoteResourceHandler.create(handler);
-        return result.thriftId();
+        return result.toRObject();
     }
 
     ///
@@ -748,7 +755,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             result = rrh.getDelegate().processRequest(new RemoteRequest(rr), cb);
         } catch (Throwable e) {
-            CefLog.Error("processRequest: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceHandler.ProcessRequest: msg=%s (%s)", e.getMessage(), e);
         }
         // From java doc: the request cannot be modified in this callback. Instance only valid within the scope of this method.
         // So don't call rr.flush() here
@@ -787,7 +794,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
             if (redirectUrlRef.get() != null)
                 result.setRedirectUrl(redirectUrlRef.get());
         } catch (Throwable e) {
-            CefLog.Error("getResponseHeaders: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceHandler.GetResponseHeaders: msg=%s (%s)", e.getMessage(), e);
         }
         return result;
     }
@@ -816,7 +823,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             continueRead = rrh.getDelegate().readResponse(buf, bytes_to_read, bytesRead, cb);
         } catch (Throwable e) {
-            CefLog.Error("readResponse: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceHandler.ReadResponse: msg=%s (%s)", e.getMessage(), e);
         }
 
         final int read = bytesRead.get();
@@ -835,7 +842,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rrh.getDelegate().cancel();
         } catch (Throwable e) {
-            CefLog.Error("ResourceHandler_Cancel: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceHandler.Cancel: msg=%s (%s)", e.getMessage(), e);
         }
     }
 
@@ -862,7 +869,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rrrh.getDelegate().onResourceRedirect(getRemoteBrowser(bid), rframe, new RemoteRequest(rreq), new RemoteResponse(rresp), sref);
         } catch (Throwable e) {
-            CefLog.Error("onResourceRedirect: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.OnResourceRedirect: msg=%s (%s)", e.getMessage(), e);
         }
         return sref.get();
     }
@@ -894,7 +901,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
             result = rrrh.getDelegate().onResourceResponse(getRemoteBrowser(bid), rframe, new RemoteRequest(rreq), new RemoteResponse(rresp));
             rreq.flush(); // |response| object cannot be modified in this callback.
         } catch (Throwable e) {
-            CefLog.Error("onResourceResponse: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.OnResourceResponse: msg=%s (%s)", e.getMessage(), e);
         }
         return result;
     }
@@ -935,7 +942,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rrrh.getDelegate().onResourceLoadComplete(getRemoteBrowser(bid), rframe, new RemoteRequest(rreq), new RemoteResponse(rresp), s, receivedContentLength);
         } catch (Throwable e) {
-            CefLog.Error("onResourceLoadComplete: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.OnResourceLoadComplete: msg=%s (%s)", e.getMessage(), e);
         }
     }
 
@@ -961,7 +968,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rrrh.getDelegate().onProtocolExecution(getRemoteBrowser(bid), rframe, new RemoteRequest(rreq), br);
         } catch (Throwable e) {
-            CefLog.Error("onProtocolExecution: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefResourceRequestHandler.OnProtocolExecution: msg=%s (%s)", e.getMessage(), e);
         }
         return br.get();
     }
@@ -1049,7 +1056,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
 
     @Override
     public boolean MessageRouterHandler_onQuery(RObject handler, int bid, RObject frame, long queryId, String request, boolean persistent, RObject queryCallback) throws TException {
-        RemoteMessageRouterHandler rmrh = RemoteMessageRouterHandler.FACTORY.get(handler.objId);
+        RemoteMessageRouterHandler rmrh = RemoteMessageRouterHandler.FACTORY.get(handler.uid);
         if (rmrh == null) return false;
 
         RemoteQueryCallback rcb = new RemoteQueryCallback(myRpc, queryCallback);
@@ -1058,21 +1065,21 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             result = rmrh.getDelegate().onQuery(getRemoteBrowser(bid), rframe, queryId, request, persistent, rcb);
         } catch (Throwable e) {
-            CefLog.Error("onQuery: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefMessageRouterHandler.onQuery: msg=%s (%s)", e.getMessage(), e);
         }
         return result;
     }
 
     @Override
     public void MessageRouterHandler_onQueryCanceled(RObject handler, int bid, RObject frame, long queryId) throws TException {
-        RemoteMessageRouterHandler rmrh = RemoteMessageRouterHandler.FACTORY.get(handler.objId);
+        RemoteMessageRouterHandler rmrh = RemoteMessageRouterHandler.FACTORY.get(handler.uid);
         if (rmrh == null) return;
 
         RemoteFrame rframe = new RemoteFrame(myRpc, frame);
         try {
             rmrh.getDelegate().onQueryCanceled(getRemoteBrowser(bid), rframe, queryId);
         } catch (Throwable e) {
-            CefLog.Error("onQueryCanceled: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefMessageRouterHandler.onQueryCanceled: msg=%s (%s)", e.getMessage(), e);
         }
     }
 
@@ -1092,12 +1099,12 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             handler = sf.getDelegate().create(getRemoteBrowser(bid), rframe, scheme_name, new RemoteRequest(rreq));
         } catch (Throwable e) {
-            CefLog.Error("SchemeHandlerFactory_CreateHandler: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefSchemeHandlerFactory.CreateHandler: msg=%s (%s)", e.getMessage(), e);
         }
         if (handler == null) return NULL_ROBJECT;
 
         RemoteResourceHandler result = RemoteResourceHandler.create(handler);
-        return result.thriftId();
+        return result.toRObject();
     }
 
     @Override
@@ -1113,7 +1120,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             cc.getDelegate().onComplete();
         } catch (Throwable e) {
-            CefLog.Error("CompletionCallback_OnComplete: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefCompletionCallback.OnComplete: msg=%s (%s)", e.getMessage(), e);
         }
         RemoteCompletionCallback.FACTORY.dispose(completionCallback);
     }
@@ -1121,9 +1128,9 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
     @Override
     public RObject RequestContextHandler_GetResourceRequestHandler(int handlerId, int bid, RObject frame, RObject request, boolean isNavigation, boolean isDownload, String requestInitiator) throws TException {
         RemoteRequestContextHandler rhandler = RemoteRequestContextHandler.FACTORY.get(handlerId);
-        RemoteBrowser browser = getRemoteBrowser(bid);
-        if (browser == null || rhandler == null) return NULL_ROBJECT;
+        if (rhandler == null) return NULL_ROBJECT;
 
+        RemoteBrowser browser = getRemoteBrowser(bid);
         RemoteRequestImpl rr = new RemoteRequestImpl(myRpc, request);
         RemoteFrame rframe = new RemoteFrame(myRpc, frame);
         BoolRef disableDefaultHandling = new BoolRef(false);
@@ -1131,12 +1138,12 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             handler = rhandler.getDelegate().getResourceRequestHandler(browser, rframe, new RemoteRequest(rr), isNavigation, isDownload, requestInitiator, disableDefaultHandling);
         } catch (Throwable e) {
-            CefLog.Error("getResourceRequestHandler: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefRequestContextHandler.GetResourceRequestHandler: msg=%s (%s)", e.getMessage(), e);
         }
         if (handler == null) return NULL_ROBJECT;
 
         RemoteResourceRequestHandler resultHandler = RemoteResourceRequestHandler.create(handler);
-        return resultHandler.thriftId(disableDefaultHandling.get() ? 1 : 0);
+        return resultHandler.toRObject(disableDefaultHandling.get() ? 1 : 0);
     }
 
     @Override
@@ -1149,7 +1156,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             continueTraverse = rvisitor.getDelegate().visit(RemoteCookieManager.toCefCookie(cookie), count, total, delete);
         } catch (Throwable e) {
-            CefLog.Error("CookieVisitor_Visit: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefCookieVisitor.Visit: msg=%s (%s)", e.getMessage(), e);
         }
         if (delete.get())
             CefLog.Error("Can't delete cookie %s via CefCookieVisitor, please use CefCookieManager.deleteCookie. TODO: implement.", cookie);
@@ -1174,7 +1181,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rvisitor.getDelegate().visit(str);
         } catch (Throwable e) {
-            CefLog.Error("StringVisitor_Visit: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefStringVisitor.Visit: msg=%s (%s)", e.getMessage(), e);
         }
     }
 
@@ -1191,7 +1198,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             ro.getDelegate().onDevToolsEvent(getRemoteBrowser(bid), method, parameters);
         } catch (Throwable e) {
-            CefLog.Error("onDevToolsEvent: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefDevToolsMessageObserver.OnDevToolsEvent: msg=%s (%s)", e.getMessage(), e);
         }
     }
 
@@ -1212,7 +1219,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             ro.getDelegate().onDevToolsMethodResult(getRemoteBrowser(bid), messageId, success, result);
         } catch (Throwable e) {
-            CefLog.Error("onDevToolsMethodResult: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefDevToolsMessageObserver.OnDevToolsMethodResult: msg=%s (%s)", e.getMessage(), e);
         }
     }
 
@@ -1238,7 +1245,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rcb.getDelegate().onFileDialogDismissed(new Vector(filePaths));
         } catch (Throwable e) {
-            CefLog.Error("onFileDialogDismissed: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefRunFileDialogCallback.OnFileDialogDismissed: msg=%s (%s)", e.getMessage(), e);
         }
         RemoteRunFileDialogCallback.FACTORY.dispose(runFileDialogCallback);
     }
@@ -1251,7 +1258,7 @@ public class ClientHandlersImpl implements ClientHandlers.Iface {
         try {
             rcb.getDelegate().onPdfPrintFinished(path, ok);
         } catch (Throwable e) {
-            CefLog.Error("onPdfPrintFinished: exception=%s", e.getMessage());
+            CefLog.Error("Exception in user's handler: CefPdfPrintCallback.OnPdfPrintFinished: msg=%s (%s)", e.getMessage(), e);
         }
         RemotePdfPrintCallback.FACTORY.dispose(pdfPrintCallback);
     }
