@@ -147,6 +147,13 @@ if(NOT DEFINED CEF_VERSION)
   set(CEF_VERSION "147.0.10+gd58e84d+chromium-147.0.7727.118")
 endif()
 
+if(NOT DEFINED JCEF_CEF_FULL_DISTRIBUTION AND DEFINED ENV{JCEF_CEF_FULL_DISTRIBUTION})
+  set(JCEF_CEF_FULL_DISTRIBUTION "$ENV{JCEF_CEF_FULL_DISTRIBUTION}")
+endif()
+
+set(JCEF_CEF_FULL_DISTRIBUTION "${JCEF_CEF_FULL_DISTRIBUTION}" CACHE BOOL
+    "Download the full CEF distribution instead of the minimal package")
+
 # Determine the platform.
 if("${CMAKE_SYSTEM_NAME}" STREQUAL "Darwin")
   if("${PROJECT_ARCH}" STREQUAL "arm64")
@@ -333,6 +340,7 @@ endif()
 PRINT_CEF_CONFIG()
 
 message(STATUS "*** JCEF CONFIGURATION SETTINGS ***")
+message(STATUS "Use full CEF distribution:     ${JCEF_CEF_FULL_DISTRIBUTION}")
 message(STATUS "Python executable:            ${Python_EXECUTABLE}")
 message(STATUS "Java directory:               ${JAVA_DIR}")
 message(STATUS "JNI libraries:                ${JNI_LIBRARIES}")
