@@ -36,6 +36,8 @@ jobs:
     
     - name: Build
       shell: bash
+      env:
+        JCEF_CEF_FULL_DISTRIBUTION: "1"
       run: ./jb/tools/mac/build.sh all x86_64
 
     - name: Rename Artifact

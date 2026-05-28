@@ -48,6 +48,7 @@ jobs:
       run: |
         call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" amd64
         set "JCEF_CMAKE=C:\Program Files\CMake"
+        set "JCEF_CEF_FULL_DISTRIBUTION=1"
         cd jb/tools/windows
         cmd /c build.bat all x86_64
 

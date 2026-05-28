@@ -42,6 +42,8 @@ jobs:
 
     - name: Build
       shell: bash
+      env:
+        JCEF_CEF_FULL_DISTRIBUTION: "1"
       run: ./jb/tools/linux/build.sh all x86_64
 
     - name: 'Upload Artifact'
