@@ -53,7 +53,7 @@ jobs:
         cmd /c build.bat all x86_64
 
     - name: 'Upload Artifact'
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v7
       with:
         name: jcef_win_x64.tar.gz
         path: jcef_win_x64.tar.gz
